@@ -13,7 +13,7 @@ export class User implements IUser {
   id: number;
 
   @Column({ length: 64, unique: true })
-  username: string;
+  name: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

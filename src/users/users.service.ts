@@ -31,9 +31,9 @@ export class UsersService {
     return users;
   }
 
-  async create(username: string): Promise<IUser> {
+  async create(name: string): Promise<IUser> {
     const user = new User();
-    user.username = username;
+    user.name = name;
 
     const result = await this.userRepository.save(user);
     const { ...newUser } = result;

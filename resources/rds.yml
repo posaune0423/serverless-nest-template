@@ -1,0 +1,61 @@
+Resources:
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "SampleDB subnet group"
+      DBSubnetGroupName: sampledb-subnet-group
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetC
+  DBCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      DatabaseName: SampleDB
+      Engine: aurora-mysql
+      # EngineMode: serverless
+      EngineVersion: "5.7.mysql_aurora.2.09.1"
+      MasterUsername: ${self:custom.secret.USER_NAME}
+      MasterUserPassword: ${self:custom.secret.PASSWORD}
+      DBClusterParameterGroupName: !Ref DBClusterParameterGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref AuroraSecurityGroup
+    DependsOn: DBSubnetGroup
+  DBClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      Description: A parameter group for aurora
+      Family: aurora-mysql5.7
+      Parameters:
+        client_encoding: UTF8
+  DBInstance1:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref DBCluster
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      Engine: aurora-mysql
+      EngineVersion: "5.7.mysql_aurora.2.09.1"
+      DBInstanceClass: db.t3.medium
+    DependsOn: DBCluster
+  RDSProxy:
+    Type: AWS::RDS::DBProxy
+    Properties:
+      DBProxyName: SampleAuroraProxy
+      Auth:
+        - SecretArn: !Ref AuroraSecret
+      VpcSecurityGroupIds:
+        - !Ref AuroraSecurityGroup
+      VpcSubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetC
+      EngineFamily: POSTGRESQL
+      RoleArn: !GetAtt ProxyRole.Arn
+    DependsOn: AuroraSecret
+  DBProxyTargetGroup:
+    Type: AWS::RDS::DBProxyTargetGroup
+    Properties:
+      TargetGroupName: default
+      DBProxyName: !Ref RDSProxy
+      DBClusterIdentifiers:
+        - !Ref DBCluster
+    DependsOn: RDSProxy

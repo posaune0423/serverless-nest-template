@@ -1,13 +1,9 @@
 service: serverless-nest-template
 frameworkVersion: "3"
 
-provider:
-  name: aws
-  runtime: nodejs16.x
-  region: ap-northeast-1
-
 plugins:
   - serverless-layers
+  - serverless-pseudo-parameters
   - serverless-offline
 
 package:
@@ -15,16 +11,55 @@ package:
   include:
     - dist/**
   exclude:
-    - '**'
+    - "**"
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  region: ap-northeast-1
+  stage: ${opt:stage, self:custom.defaultStage}
+  profile: ${self:custom.profiles.${opt:stage, self:custom.defaultStage}}
+  stackName: serverless-nest-template
+  apiName: serverless-nest-template
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - secretsmanager:GetSecretValue
+        - rds-data:*
+        - ec2:CreateNetworkInterface
+        - ec2:DescribeNetworkInterfaces
+        - ec2:DeleteNetworkInterface
+      Resource: "*"
+  environment:
+    ENV: ${self:custom.environments.ENV}
+    DB_PORT: 3306
+    DB_HOST: !GetAtt RDSProxy.Endpoint
+
+custom:
+  defaultStage: dev
+  environments: ${file(./config/.env.${opt:stage, self:custom.defaultStage}.yml)}
+  secret: ${file(./config/.secret.${opt:stage, self:custom.defaultStage}.yml)}
+
+resources:
+  - ${file(./resources/vpc.yml)}
+  - ${file(./resources/rds.yml)}
+  - ${file(./resources/secret-manager.yml)}
+
 functions:
   index:
     handler: dist/index.handler
+    vpc:
+      securityGroupIds:
+        - !Ref LambdaSecurityGroup
+      subnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetC
     events:
       - http:
           cors: true
-          path: '/'
+          path: "/"
           method: any
       - http:
           cors: true
-          path: '{proxy+}'
+          path: "{proxy+}"
           method: any

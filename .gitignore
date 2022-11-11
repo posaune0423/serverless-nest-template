@@ -34,7 +34,10 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
-
 # config
 config/.env.dev.yml
 config/.secret.dev.yml
+
+# sqlite
+data
+
